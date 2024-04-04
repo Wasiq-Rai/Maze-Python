@@ -35,14 +35,11 @@ class Maze:
         for i in range(rows):
             for j in range(cols):
                 if not self.nodes[i][j].is_wall:
-                    # Connect neighboring nodes (considering diagonal movement)
-                    for dx in [-1, 0, 1]:
-                        for dy in [-1, 0, 1]:
-                            if dx == 0 and dy == 0:
-                                continue
-                            new_x, new_y = i + dx, j + dy
-                            if 0 <= new_x < rows and 0 <= new_y < cols and not self.nodes[new_x][new_y].is_wall:
-                                self.nodes[i][j].add_neighbor(self.nodes[new_x][new_y])
+                    # Connect neighboring nodes (considering only right, left, up, and down movements)
+                    for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                        new_x, new_y = i + dx, j + dy
+                        if 0 <= new_x < rows and 0 <= new_y < cols and not self.nodes[new_x][new_y].is_wall:
+                            self.nodes[i][j].add_neighbor(self.nodes[new_x][new_y])
 
     def visualize(self, current_path, ax):
         ax.clear()
@@ -105,6 +102,12 @@ class MazeSolver:
 
             # Visualize the current step
             self.maze.visualize(self.current_path, self.ax)
+
+        if self.success:
+            print("Success! Shortest path:")
+            print(self.current_path)
+        else:
+            print("Failed to reach the end node.")
 
         plt.ioff()
         plt.show()
