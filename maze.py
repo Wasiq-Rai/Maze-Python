@@ -7,7 +7,7 @@ class Node:
         self.y = y
         self.is_wall = is_wall
         self.neighbors = []
-        self.parent = None
+        self.parent = None  # Attribute to store the parent node
         self.g = float('inf')  # Cost from start node to current node
         self.h = float('inf')  # Heuristic estimate to goal node
 
@@ -55,6 +55,10 @@ class Maze:
         # Define heuristic function (Manhattan distance)
         return abs(node.x - self.end_node[0]) + abs(node.y - self.end_node[1])
 
+    def calculate_move_cost(self, current_node, neighbor):
+        # Define the cost function for moving from one node to another
+        return 1  # Constant cost for each move
+
     def A_star_algorithm(self):
         start_node = self.nodes[self.start_node[0]][self.start_node[1]]
         end_node = self.nodes[self.end_node[0]][self.end_node[1]]
@@ -67,7 +71,7 @@ class Maze:
 
             if current_node == end_node:
                 print("Success! Shortest path found.")
-                return self.reconstruct_path(current_node)
+                return self.build_path(end_node)  # Return the path
 
             self.closed_set.add(current_node)
 
@@ -75,10 +79,10 @@ class Maze:
                 if neighbor in self.closed_set or neighbor.is_wall:
                     continue
 
-                tentative_g = current_node.g + 1  # Cost from start to neighbor is always 1 in this case
+                tentative_g = current_node.g + self.calculate_move_cost(current_node, neighbor)
 
                 if tentative_g < neighbor.g:
-                    neighbor.parent = current_node
+                    neighbor.parent = current_node  # Update the parent
                     neighbor.g = tentative_g
                     neighbor.h = self.heuristic(neighbor)
                     heapq.heappush(self.open_set, neighbor)
@@ -86,10 +90,12 @@ class Maze:
         print("Failed to find a path.")
         return []
 
-    def reconstruct_path(self, current_node):
+    def build_path(self, end_node):
+        """Trace back from the end node to the start node and accumulate the path."""
         path = []
+        current_node = end_node
         while current_node:
-            path.insert(0, (current_node.x, current_node.y))  # Insert at the beginning to maintain order
+            path.insert(0, (current_node.x, current_node.y))  # Prepend each node to maintain order
             current_node = current_node.parent
         return path
 
@@ -109,7 +115,6 @@ class Maze:
                 else:  # Non-visitable Node
                     ax.fill([j, j+1, j+1, j], [len(self.maze_layout)-i, len(self.maze_layout)-i, len(self.maze_layout)-i-1, len(self.maze_layout)-i-1], 'skyblue', edgecolor='black', linewidth=1)
 
-        
         # Adding labels
         for i in range(len(self.maze_layout)):
             for j in range(len(self.maze_layout[0])):
@@ -145,7 +150,9 @@ maze_layout = [
 
 start_node = (0, 0)
 end_node = (4, 5)
-obstacles = [(0, 1),(1,3),(2, 1), (3, 1), (2, 3), (3, 4) ]
+obstacles = [(0, 1),(1,3),(2, 1), (3, 1), (2, 3), (3, 4)]
+# obstacles = [(0, 1),(1,1),(1,3),(2, 1), (3, 1), (2, 3), (3, 4)]
+# obstacles = [(0, 1),(1,1),(1,3),(2, 1), (3, 1), (2, 3), (3, 4),(4,4)]
 
 solver = MazeSolver(maze_layout, start_node, end_node, obstacles)
 solver.solve()
