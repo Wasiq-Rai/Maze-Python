@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from collections import deque
+import heapq
 
 class Node:
     def __init__(self, x, y, is_wall):
@@ -7,9 +7,16 @@ class Node:
         self.y = y
         self.is_wall = is_wall
         self.neighbors = []
+        self.parent = None
+        self.g = float('inf')  # Cost from start node to current node
+        self.h = float('inf')  # Heuristic estimate to goal node
 
     def add_neighbor(self, neighbor):
         self.neighbors.append(neighbor)
+
+    def __lt__(self, other):
+        # Compare nodes based on their f value (f = g + h)
+        return (self.g + self.h) < (other.g + other.h)
 
 class Maze:
     def __init__(self, maze_layout, start_node, end_node, obstacles):
@@ -19,6 +26,8 @@ class Maze:
         self.obstacles = obstacles
         self.nodes = []
         self.visited = set()  # Keep track of visited nodes
+        self.open_set = []  # Nodes to be explored
+        self.closed_set = set()  # Nodes already explored
         self.create_maze()
 
     def create_maze(self):
@@ -28,7 +37,8 @@ class Maze:
         for i in range(rows):
             row = []
             for j in range(cols):
-                node = Node(i, j, self.maze_layout[i][j])
+                is_wall = (i, j) in self.obstacles
+                node = Node(i, j, is_wall)
                 row.append(node)
             self.nodes.append(row)
 
@@ -40,6 +50,48 @@ class Maze:
                         new_x, new_y = i + dx, j + dy
                         if 0 <= new_x < rows and 0 <= new_y < cols and not self.nodes[new_x][new_y].is_wall:
                             self.nodes[i][j].add_neighbor(self.nodes[new_x][new_y])
+
+    def heuristic(self, node):
+        # Define heuristic function (Manhattan distance)
+        return abs(node.x - self.end_node[0]) + abs(node.y - self.end_node[1])
+
+    def A_star_algorithm(self):
+        start_node = self.nodes[self.start_node[0]][self.start_node[1]]
+        end_node = self.nodes[self.end_node[0]][self.end_node[1]]
+        start_node.g = 0
+        start_node.h = self.heuristic(start_node)
+        heapq.heappush(self.open_set, start_node)
+
+        while self.open_set:
+            current_node = heapq.heappop(self.open_set)
+
+            if current_node == end_node:
+                print("Success! Shortest path found.")
+                return self.reconstruct_path(current_node)
+
+            self.closed_set.add(current_node)
+
+            for neighbor in current_node.neighbors:
+                if neighbor in self.closed_set or neighbor.is_wall:
+                    continue
+
+                tentative_g = current_node.g + 1  # Cost from start to neighbor is always 1 in this case
+
+                if tentative_g < neighbor.g:
+                    neighbor.parent = current_node
+                    neighbor.g = tentative_g
+                    neighbor.h = self.heuristic(neighbor)
+                    heapq.heappush(self.open_set, neighbor)
+
+        print("Failed to find a path.")
+        return []
+
+    def reconstruct_path(self, current_node):
+        path = []
+        while current_node:
+            path.insert(0, (current_node.x, current_node.y))  # Insert at the beginning to maintain order
+            current_node = current_node.parent
+        return path
 
     def visualize(self, current_path, ax):
         ax.clear()
@@ -57,6 +109,7 @@ class Maze:
                 else:  # Non-visitable Node
                     ax.fill([j, j+1, j+1, j], [len(self.maze_layout)-i, len(self.maze_layout)-i, len(self.maze_layout)-i-1, len(self.maze_layout)-i-1], 'skyblue', edgecolor='black', linewidth=1)
 
+        
         # Adding labels
         for i in range(len(self.maze_layout)):
             for j in range(len(self.maze_layout[0])):
@@ -72,46 +125,14 @@ class Maze:
 class MazeSolver:
     def __init__(self, maze_layout, start_node, end_node, obstacles):
         self.maze = Maze(maze_layout, start_node, end_node, obstacles)
-        self.current_path = []
-        self.success = False
         self.fig, self.ax = plt.subplots()
 
-    def is_valid_move(self, x, y):
-        return 0 <= x < len(self.maze.maze_layout) and 0 <= y < len(self.maze.maze_layout[0]) and (x, y) not in self.maze.obstacles and (x, y) not in self.maze.visited
-
-    def bfs(self):
-        queue = deque([(self.maze.nodes[self.maze.start_node[0]][self.maze.start_node[1]], [])])
-
-        while queue:
-            current_node, current_path = queue.popleft()
-            x, y = current_node.x, current_node.y
-
-            if (x, y) == self.maze.end_node:
-                self.current_path = current_path + [(x, y)]
-                self.success = True
-                break
-
-            if current_node not in self.maze.visited:
-                self.maze.visited.add(current_node)
-                self.current_path = current_path + [(x, y)]
-
-                for neighbor in current_node.neighbors:
-                    new_x, new_y = neighbor.x, neighbor.y
-                    if self.is_valid_move(new_x, new_y):
-                        queue.append((neighbor, self.current_path))
-
-            # Visualize the current step
-            self.maze.visualize(self.current_path, self.ax)
-
-        if self.success:
-            print("Success! Shortest path:")
-            print(self.current_path)
-        else:
-            print("Failed to reach the end node.")
-
-        plt.ioff()
+    def solve(self):
+        shortest_path = self.maze.A_star_algorithm()
+        if shortest_path:
+            print("Shortest Path:", shortest_path)
+        self.maze.visualize(shortest_path, self.ax)
         plt.show()
-        return self.success
 
 # Example Usage
 maze_layout = [
@@ -124,7 +145,7 @@ maze_layout = [
 
 start_node = (0, 0)
 end_node = (4, 5)
-obstacles = [(0, 1), (2, 1), (3, 1), (2, 3), (3, 4), (4, 4)]
+obstacles = [(0, 1),(1,3),(2, 1), (3, 1), (2, 3), (3, 4) ]
 
 solver = MazeSolver(maze_layout, start_node, end_node, obstacles)
-solver.bfs()
+solver.solve()

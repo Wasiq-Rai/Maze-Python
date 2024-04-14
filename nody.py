@@ -1,13 +1,9 @@
-def group_anagrams(strs):
-    anagrams = {}
-    for word in strs:
-        sorted_word = ''.join(sorted(word))
-        if sorted_word in anagrams:
-            anagrams[sorted_word].append(word)
-        else:
-            anagrams[sorted_word] = [word]
-    return list(anagrams.values())
+class Node:
+    def __init__(self, x, y, is_wall):
+        self.x = x
+        self.y = y
+        self.is_wall = is_wall
+        self.neighbors = []
 
-# Example usage:
-input_list = ["eat", "tea", "tan", "ate", "nat", "bat"]
-print(group_anagrams(input_list))
+    def add_neighbor(self, neighbor):
+        self.neighbors.append(neighbor)
